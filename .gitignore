@@ -1,0 +1,13 @@
+# Node modules
+.vscode/
+node_modules/
+uploads/
+# Env files
+.env
+.env.*
+config.env.*
+config.env.development
+config.env.production
+src/seed/
+*.seed.js
+*.seed.ts
