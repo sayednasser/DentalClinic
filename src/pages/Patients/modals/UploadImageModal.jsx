@@ -51,7 +51,6 @@ export default function UploadImageModal({ patientId, onClose, onUploaded }) {
             ref={inputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             style={{ display: 'none' }}
             onChange={handlePick}
           />
