@@ -83,7 +83,7 @@ export default function ReceptionistDashboard({ onNavigate }) {
   const load = useCallback(async () => {
     setLoading(true)
     patientsAPI.getAll()
-      .then(d => setPatients(Array.isArray(d) ? d : d?.data || []))
+      .then(d => setPatients(d?.data?.patients || []))
       .catch(() => toast('فشل تحميل البيانات', 'error'))
       .finally(() => setLoading(false))
   }, [])
@@ -91,7 +91,7 @@ export default function ReceptionistDashboard({ onNavigate }) {
   useEffect(() => { load() }, [])
   const { start: ts, end: te } = todayBounds()
   const { start: ms, end: me } = monthBounds()
-
+  console.log(patients)
   const total = patients.length
   const pending = patients.filter(p => (p.status || '').toLowerCase() === 'pending').length
   const completed = patients.filter(p => (p.status || '').toLowerCase() === 'completed').length

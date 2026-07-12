@@ -19,21 +19,37 @@ function getPatientIdFromUrl() {
 export default function PatientsPage({ openCreateOnMount = false }) {
   const { user } = useAuth()
   const role = normalizeRole(user?.role)
-  
+
   const canEdit = role === 'admin' || role === 'receptionist'
   const canCreate = role === 'admin' || role === 'receptionist'
   const canDelete = role === 'admin'
 
 
   const {
-    doctors, loading, search, setSearch,
-    filtered, load, handleDelete, handleStatus,
+    doctors,
+    loading,
+    search,
+    setSearch,
+    filtered,
+
+    page,
+    setPage,
+    totalPages,
+
+    load,
+    handleDelete,
+    handleStatus,
   } = usePatients()
 
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
   const [appointmentPatient, setAppointmentPatient] = useState(null)
   const [viewingId, setViewingId] = useState(() => getPatientIdFromUrl())
+  const [pageInput, setPageInput] = useState('1')
+
+  useEffect(() => {
+    setPageInput(String(page))
+  }, [page])
 
   useEffect(() => {
     if (openCreateOnMount) setModal('create')
@@ -112,6 +128,77 @@ export default function PatientsPage({ openCreateOnMount = false }) {
         onDelete={handleDelete}
         onStatusChange={handleStatus}
       />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 12,
+          marginTop: 20,
+          flexWrap: 'wrap'
+        }}
+      >
+        <button
+          className="btn btn-secondary"
+          disabled={page === 1}
+          onClick={() => setPage(prev => prev - 1)}
+        >
+          السابق
+        </button>
+
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={pageInput}
+          onChange={(e) => setPageInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const value = Number(pageInput)
+
+              if (value >= 1 && value <= totalPages) {
+                setPage(value)
+              }
+            }
+          }}
+          onBlur={() => {
+            const value = Number(pageInput)
+
+            if (value >= 1 && value <= totalPages) {
+              setPage(value)
+            } else {
+              setPageInput(String(page))
+            }
+          }}
+          style={{
+            width: 70,
+            height: 38,
+            textAlign: 'center',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            outline: 'none',
+            fontWeight: 600,
+            fontSize: 15
+          }}
+        />
+
+        <span
+          style={{
+            fontWeight: 600,
+            color: 'var(--text-muted)'
+          }}
+        >
+          من {totalPages}
+        </span>
+
+        <button
+          className="btn btn-secondary"
+          disabled={page >= totalPages}
+          onClick={() => setPage(prev => prev + 1)}
+        >
+          التالي
+        </button>
+      </div>
 
       {modal === 'create' && (
         <CreatePatientModal doctors={doctors} onClose={closeModal} onSaved={load} />

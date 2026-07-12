@@ -106,8 +106,11 @@ export default function AdminDashboard({ onNavigate } = {}) {
         adminAPI.getDoctorsPerf()
       ])
 
-      if (p.status === 'fulfilled') setPatients(Array.isArray(p.value) ? p.value : p.value?.data || [])
-
+      if (p.status === 'fulfilled') {
+        setPatients(
+          p.value?.data?.patients || []
+        )
+      }
       if (u.status === 'fulfilled') setUsers(Array.isArray(u.value) ? u.value : u.value?.data || [])
 
       if (d.status === 'fulfilled') setDoctorPerformance(Array.isArray(d.value) ? d.value : d.value?.data || [])

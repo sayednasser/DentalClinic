@@ -69,59 +69,54 @@ function SimpleTablePage({ fetcher, title, columns }) {
 
 function DebtAlerts() {
   const [data, setData] = useState([])
+  const [pagination, setPagination] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pageInput, setPageInput] = useState('1')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    adminAPI.getDebtAlerts()
+    setLoading(true)
+
+    adminAPI
+      .getDebtAlerts(page, 20)
       .then(res => {
-        setData(Array.isArray(res) ? res : res.data || [])
+        setData(res?.data?.patients || [])
+        setPagination(res?.data?.pagination)
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [page])
+
+  useEffect(() => {
+    setPageInput(String(page))
+  }, [page])
 
   if (loading) return <PageLoader />
 
   const totalDebt = data.reduce(
-    (sum, p) => sum + Number(p.debt || p.remainingAmount || 0),
+    (sum, p) => sum + (Number(p.totalCost || 0) - Number(p.costPaid || 0)),
     0
   )
 
   return (
     <>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))',
-          gap: 20,
-          marginBottom: 24
-        }}
-      >
-        <div className="card" style={{ padding: 24 }}>
-          <h4
-            style={{
-              color: 'var(--text-muted)',
-              marginBottom: 10
-            }}
-          >
-            إجمالي الديون المتأخرة
-          </h4>
+      <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+        <h4>إجمالي ديون الصفحة الحالية</h4>
 
-          <div
-            style={{
-              fontSize: 32,
-              fontWeight: 700,
-              color: 'var(--rose-500)'
-            }}
-          >
-            {totalDebt.toLocaleString('ar-EG')} ج.م
-          </div>
+        <div
+          style={{
+            fontSize: 32,
+            fontWeight: 700,
+            color: 'var(--rose-500)'
+          }}
+        >
+          {totalDebt.toLocaleString('ar-EG')} ج.م
         </div>
       </div>
 
       <div className="card" style={{ padding: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
-          الديون المتأخرة
-        </h3>
+        <h3>الديون المتأخرة</h3>
 
         <div className="table-wrap">
           <table>
@@ -129,33 +124,106 @@ function DebtAlerts() {
               <tr>
                 <th>المريض</th>
                 <th>الهاتف</th>
-                <th>الديون</th>
+                <th>الإجمالي</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
               </tr>
             </thead>
 
             <tbody>
-              {data.map((r, i) => (
-                <tr key={i}>
-                  <td>
-                    <strong>
-                      {r.patientName || r.name || r.fullName}
-                    </strong>
-                  </td>
+              {data.map((r, i) => {
+                const debt =
+                  Number(r.totalCost || 0) - Number(r.costPaid || 0)
 
-                  <td>{r.phone || '—'}</td>
+                return (
+                  <tr key={r._id || i}>
+                    <td>
+                      <strong>{r.fullName}</strong>
+                    </td>
 
-                  <td>
-                    <span className="badge badge-red">
-                      {Number(
-                        r.debt || r.remainingAmount || 0
-                      ).toLocaleString('ar-EG')} ج.م
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    <td>{r.phone || '—'}</td>
+
+                    <td>
+                      {Number(r.totalCost || 0).toLocaleString('ar-EG')}
+                    </td>
+
+                    <td>
+                      {Number(r.costPaid || 0).toLocaleString('ar-EG')}
+                    </td>
+
+                    <td>
+                      <span className="badge badge-red">
+                        {debt.toLocaleString('ar-EG')} ج.م
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
+
+        {pagination && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '16px'
+            }}
+          >
+            <button
+              className="btn btn-secondary"
+              disabled={page === 1}
+              onClick={() => setPage(prev => prev - 1)}
+            >
+              السابق
+            </button>
+
+            <input
+              type="number"
+              min={1}
+              max={pagination.totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const value = Number(pageInput)
+
+                  if (
+                    value >= 1 &&
+                    value <= pagination.totalPages
+                  ) {
+                    setPage(value)
+                  }
+                }
+              }}
+              onBlur={() => {
+                const value = Number(pageInput)
+
+                if (
+                  value >= 1 &&
+                  value <= pagination.totalPages
+                ) {
+                  setPage(value)
+                } else {
+                  setPageInput(String(page))
+                }
+              }}
+            />
+
+            <span>من {pagination.totalPages}</span>
+
+            <button
+              className="btn btn-secondary"
+              disabled={page >= pagination.totalPages}
+              onClick={() => setPage(prev => prev + 1)}
+            >
+              التالي
+            </button>
+          </div>
+        )}
       </div>
     </>
   )
@@ -227,13 +295,39 @@ function PaymentsList() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    patientsAPI.getAll()
-      .then(res => {
-        setData(Array.isArray(res) ? res : res.data || [])
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(null)
+  const [pageInput, setPageInput] = useState('1')
+
+  const loadPayments = async (pageNumber = 1) => {
+    setLoading(true)
+
+    try {
+      const res = await patientsAPI.getAll({
+        page: pageNumber,
+        limit: 20
       })
-      .finally(() => setLoading(false))
-  }, [])
+
+      const result = res?.data || {}
+
+      setData(result.patients || [])
+      setPagination(result.pagination || null)
+
+    } catch (err) {
+      console.log(err)
+      setData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPayments(page)
+  }, [page])
+
+  useEffect(() => {
+    setPageInput(String(page))
+  }, [page])
 
   if (loading) return <PageLoader />
 
@@ -251,19 +345,16 @@ function PaymentsList() {
 
   return (
     <>
-      {/* Summary Cards */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))',
-          gap: '20px',
-          marginBottom: '24px'
+          gap: 20,
+          marginBottom: 24
         }}
       >
         <div className="card" style={{ padding: 24 }}>
-          <h4 style={{ color: '#64748b', marginBottom: 10 }}>
-            الإجمالي الكلي
-          </h4>
+          <h4>إجمالي الصفحة</h4>
 
           <div
             style={{
@@ -277,9 +368,7 @@ function PaymentsList() {
         </div>
 
         <div className="card" style={{ padding: 24 }}>
-          <h4 style={{ color: '#64748b', marginBottom: 10 }}>
-            إجمالي المدفوع
-          </h4>
+          <h4>المدفوع</h4>
 
           <div
             style={{
@@ -293,9 +382,7 @@ function PaymentsList() {
         </div>
 
         <div className="card" style={{ padding: 24 }}>
-          <h4 style={{ color: '#64748b', marginBottom: 10 }}>
-            إجمالي المتبقي
-          </h4>
+          <h4>المتبقي</h4>
 
           <div
             style={{
@@ -309,9 +396,8 @@ function PaymentsList() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card" style={{ padding: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
+        <h3 style={{ marginBottom: 16 }}>
           المدفوعات
         </h3>
 
@@ -321,47 +407,56 @@ function PaymentsList() {
               <tr>
                 <th>المريض</th>
                 <th>الهاتف</th>
-                <th>تاريخ الزيارة</th>
                 <th>الإجمالي</th>
                 <th>مدفوع</th>
                 <th>متبقي</th>
+                <th>آخر زيارة</th>
               </tr>
             </thead>
 
             <tbody>
-              {data.map((r, i) => {
-                const rem =
-                  Number(r.totalCost || 0) -
-                  Number(r.costPaid || 0)
-                return (
-                  <tr key={i}>
+              {data.map((p) => {
 
-                    <td><strong>{r.fullName || r.name}</strong></td>
-                    <td>{r.phone || '—'}</td>
+                const remaining =
+                  Number(p.totalCost || 0) -
+                  Number(p.costPaid || 0)
+
+                return (
+                  <tr key={p._id}>
                     <td>
-                      {r.visits?.length ? new Date(r.visits[r.visits.length - 1].visitDate).toLocaleDateString('ar-EG') : '—'}
+                      <strong>{p.fullName}</strong>
                     </td>
 
+                    <td>{p.phone || '—'}</td>
+
                     <td>
-                      {Number(r.totalCost || 0).toLocaleString('ar-EG')} ج.م
+                      {Number(p.totalCost || 0).toLocaleString('ar-EG')} ج.م
                     </td>
 
                     <td
                       style={{
                         color: '#10b981',
-                        fontWeight: 600
+                        fontWeight: 700
                       }}
                     >
-                      {Number(r.costPaid || 0).toLocaleString('ar-EG')} ج.م
+                      {Number(p.costPaid || 0).toLocaleString('ar-EG')} ج.م
                     </td>
 
                     <td
                       style={{
-                        color: rem > 0 ? '#ef4444' : '#10b981',
-                        fontWeight: 600
+                        color: remaining > 0 ? '#ef4444' : '#10b981',
+                        fontWeight: 700
                       }}
                     >
-                      {rem.toLocaleString('ar-EG')} ج.م
+                      {remaining.toLocaleString('ar-EG')} ج.م
+                    </td>
+
+                    <td>
+                      {p.visits?.length
+                        ? new Date(
+                            p.visits[p.visits.length - 1].visitDate
+                          ).toLocaleDateString('ar-EG')
+                        : '—'}
                     </td>
                   </tr>
                 )
@@ -369,6 +464,73 @@ function PaymentsList() {
             </tbody>
           </table>
         </div>
+
+        {pagination && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '16px'
+            }}
+          >
+            <button
+              className="btn btn-secondary"
+              disabled={page === 1}
+              onClick={() => setPage(prev => prev - 1)}
+            >
+              السابق
+            </button>
+
+            <input
+              type="number"
+              min={1}
+              max={pagination.totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const value = Number(pageInput)
+
+                  if (value >= 1 && value <= pagination.totalPages) {
+                    setPage(value)
+                  }
+                }
+              }}
+              onBlur={() => {
+                const value = Number(pageInput)
+
+                if (value >= 1 && value <= pagination.totalPages) {
+                  setPage(value)
+                } else {
+                  setPageInput(String(page))
+                }
+              }}
+              style={{
+                width: 70,
+                height: 38,
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                textAlign: 'center',
+                fontWeight: 600,
+                fontSize: 15
+              }}
+            />
+
+            <span style={{ fontWeight: 600 }}>
+              من {pagination.totalPages}
+            </span>
+
+            <button
+              className="btn btn-secondary"
+              disabled={page >= pagination.totalPages}
+              onClick={() => setPage(prev => prev + 1)}
+            >
+              التالي
+            </button>
+          </div>
+        )}
       </div>
     </>
   )

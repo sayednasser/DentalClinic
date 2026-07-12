@@ -86,7 +86,11 @@ export default function WaitingQueue() {
         patientService.getAll(),
         patientService.getDoctors()
       ])
-      setPatients(p.status === 'fulfilled' ? p.value : [])
+      setPatients(
+        p.status === 'fulfilled'
+          ? (Array.isArray(p.value) ? p.value : p.value?.patients || [])
+          : []
+      )
       setDoctors(d.status === 'fulfilled' ? d.value : [])
     } catch {
       toast('فشل تحميل البيانات', 'error')

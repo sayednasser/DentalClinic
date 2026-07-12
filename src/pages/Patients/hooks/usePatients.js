@@ -8,23 +8,37 @@ export function usePatients() {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   const load = useCallback(async () => {
     setLoading(true)
+
     try {
-      const [p, d] = await Promise.allSettled([patientService.getAll(), patientService.getDoctors()])
-      if (p.status === 'fulfilled') setPatients(p.value)
-      if (d.status === 'fulfilled') setDoctors(d.value)
+      const [p, d] = await Promise.allSettled([
+        patientService.getAll(page, 20, search),
+        patientService.getDoctors()
+      ])
+
+      if (p.status === 'fulfilled') {
+        setPatients(p.value.patients)
+        setTotalPages(p.value.pagination.totalPages)
+      }
+
+      if (d.status === 'fulfilled') {
+        setDoctors(d.value)
+      }
+
     } catch {
       toast('فشل تحميل البيانات', 'error')
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [page, search])
 
-  useEffect(() => { load() }, [load])
-
+  useEffect(() => {
+    load()
+  }, [load])
   async function handleDelete(p) {
     if (!confirm(`حذف "${p.fullName || p.name}"؟`)) return
     try {
@@ -47,10 +61,7 @@ export function usePatients() {
     }
   }
 
-  const filtered = patients.filter(p =>
-    (p.fullName || p.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.phone || '').includes(search)
-  )
+const filtered = patients;
 
   return {
     patients,
@@ -60,6 +71,9 @@ export function usePatients() {
     search,
     setSearch,
     filtered,
+    page,
+    setPage,
+    totalPages,
     load,
     handleDelete,
     handleStatus,

@@ -1,13 +1,18 @@
 import { patientsAPI, adminAPI } from '../../../api'
 
 export const patientService = {
-  async getAll() {
-    const res = await patientsAPI.getAll()
-    return Array.isArray(res) ? res : res?.data || []
-  },
-followUp(id) {
-  return patientsAPI.followUp(id)
+  async getAll(page = 1, limit = 20, search = "") {
+  const res = await patientsAPI.getAll(
+    page,
+    limit,
+    search
+  );
+
+  return res?.data;
 },
+  followUp(id) {
+    return patientsAPI.followUp(id)
+  },
   async getDoctors() {
     const res = await adminAPI.getUsers().catch(() => ({ data: [] }))
     const all = Array.isArray(res) ? res : res?.data || []
@@ -60,9 +65,9 @@ followUp(id) {
     return Array.isArray(res) ? res : res?.data || []
   },
 
-uploadImage(id, file, caption) {
-  return patientsAPI.uploadImage(id, file, caption);
-},
+  uploadImage(id, file, caption) {
+    return patientsAPI.uploadImage(id, file, caption);
+  },
   deleteImage(id, imageId) {
     return patientsAPI.deleteImage(id, imageId)
   },

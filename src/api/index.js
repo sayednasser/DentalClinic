@@ -96,7 +96,8 @@ export const adminAPI = {
   getIncome: (date) => get(`/admin/income?date=${date}`),
   getDoctorsPerf: () => get('/admin/doctors/performance'),
   getRevenue: () => get('/admin/analytics/revenue'),
-  getDebtAlerts: () => get('/admin/alerts/debt'),
+  getDebtAlerts: (page = 1, limit = 20) =>
+    get(`/admin/alerts/debt?page=${page}&limit=${limit}`),
   getRecentPayments: () => get('/admin/payments/recent'),
 }
 export const doctorAPI = {
@@ -110,7 +111,22 @@ export const doctorAPI = {
 }
 export const patientsAPI = {
   create: b => post('/patient', b),
-  getAll: () => get('/patient'),
+
+  getAll: (page = 1, limit = 20, search = "") => {
+
+    if (typeof page === "object") {
+      const params = page
+
+      page = params.page || 1
+      limit = params.limit || 20
+      search = params.search || ""
+    }
+
+    return get(
+      `/patient?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
+    )
+  },
+
   getById: id => get(`/patient/${id}`),
   search: (keyword) => get(`/patient/search?keyword=${encodeURIComponent(keyword)}`),
   update: (id, b) => patch(`/patient/${id}`, b),
